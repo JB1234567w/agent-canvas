@@ -3,6 +3,7 @@ import { Code, FileText, Copy, Download, X, Maximize2, Minimize2 } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import type { CanvasContent } from '@/types/research';
 
 interface CanvasProps {
@@ -135,15 +136,9 @@ export function Canvas({ contents, onRemoveContent }: CanvasProps) {
                 </div>
               </div>
               <div className="flex-1 overflow-auto scrollbar-thin p-4">
-                {content.type === 'code' ? (
-                  <pre className="text-sm font-mono bg-muted/50 rounded-lg p-4 overflow-x-auto">
-                    <code>{content.content}</code>
-                  </pre>
-                ) : (
-                  <div className="prose prose-invert prose-sm max-w-none">
-                    <div className="whitespace-pre-wrap text-sm">{content.content}</div>
-                  </div>
-                )}
+                <MarkdownRenderer 
+                  content={content.type === 'code' ? `\`\`\`${content.language || ''}\n${content.content}\n\`\`\`` : content.content} 
+                />
               </div>
             </TabsContent>
           ))}
