@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Paperclip, Loader2, Bot, User, X } from 'lucide-react';
+import { SearchBar, highlightText } from '@/components/SearchBar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -17,8 +18,43 @@ export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [showUpload, setShowUpload] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Find all matches
+  const matches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return messages
+      .filter((m) => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
+      .map((m) => m.id);
+  }, [messages, searchQuery]);
+
+  const scrollToMatch = useCallback((messageId: string) => {
+    const ref = messageRefs.current.get(messageId);
+    ref?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
+
+  const handleNextMatch = useCallback(() => {
+    if (matches.length === 0) return;
+    const nextIndex = (currentMatchIndex + 1) % matches.length;
+    setCurrentMatchIndex(nextIndex);
+    scrollToMatch(matches[nextIndex]);
+  }, [matches, currentMatchIndex, scrollToMatch]);
+
+  const handlePrevMatch = useCallback(() => {
+    if (matches.length === 0) return;
+    const prevIndex = (currentMatchIndex - 1 + matches.length) % matches.length;
+    setCurrentMatchIndex(prevIndex);
+    scrollToMatch(matches[prevIndex]);
+  }, [matches, currentMatchIndex, scrollToMatch]);
+
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    setCurrentMatchIndex(0);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,6 +83,14 @@ export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps
     <div className="flex h-full flex-col bg-background">
       <div className="panel-header">
         <span className="panel-title">Research Chat</span>
+        <SearchBar
+          onSearch={handleSearch}
+          matchCount={matches.length}
+          currentMatch={matches.length > 0 ? currentMatchIndex + 1 : 0}
+          onNextMatch={handleNextMatch}
+          onPrevMatch={handlePrevMatch}
+          placeholder="Search messages..."
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-4">
@@ -65,9 +109,14 @@ export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps
           messages.map((message) => (
             <div
               key={message.id}
+              ref={(el) => {
+                if (el) messageRefs.current.set(message.id, el);
+              }}
               className={cn(
-                'flex gap-3 animate-fade-in',
-                message.role === 'user' ? 'flex-row-reverse' : ''
+                'flex gap-3 animate-fade-in transition-all duration-300',
+                message.role === 'user' ? 'flex-row-reverse' : '',
+                searchQuery && matches.includes(message.id) && 'ring-2 ring-primary/50 rounded-lg p-2 -m-2',
+                searchQuery && matches[currentMatchIndex] === message.id && 'ring-primary bg-primary/5'
               )}
             >
               <div
@@ -94,10 +143,16 @@ export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps
                     message.role === 'user' ? 'message-user' : 'message-agent'
                   )}
                 >
-                  {message.role === 'user' ? (
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                {message.role === 'user' ? (
+                    <p className="text-sm whitespace-pre-wrap">
+                      {searchQuery ? highlightText(message.content, searchQuery) : message.content}
+                    </p>
                   ) : (
-                    <MarkdownRenderer content={message.content} className="text-sm" />
+                    <MarkdownRenderer 
+                      content={message.content} 
+                      className="text-sm" 
+                      searchQuery={searchQuery}
+                    />
                   )}
                   {message.attachments && <AttachmentPreview attachments={message.attachments} />}
                 </div>
