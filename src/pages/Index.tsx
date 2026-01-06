@@ -7,6 +7,7 @@ import {
 import { ChatHistory } from '@/components/ChatHistory';
 import { ChatPanel } from '@/components/ChatPanel';
 import { Canvas } from '@/components/Canvas';
+import { SourcesPanel } from '@/components/SourcesPanel';
 import { TopBar } from '@/components/TopBar';
 import {
   type ChatSession,
@@ -119,6 +120,7 @@ export default function Index() {
   const [isLoading, setIsLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
   const [showCanvas, setShowCanvas] = useState(true);
+  const [showSources, setShowSources] = useState(true);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 
@@ -215,8 +217,10 @@ export default function Index() {
         onSettingsChange={setSettings}
         showHistory={showHistory}
         showCanvas={showCanvas}
+        showSources={showSources}
         onToggleHistory={() => setShowHistory(!showHistory)}
         onToggleCanvas={() => setShowCanvas(!showCanvas)}
+        onToggleSources={() => setShowSources(!showSources)}
       />
 
       <ResizablePanelGroup direction="horizontal" className="flex-1">
@@ -235,13 +239,22 @@ export default function Index() {
           </>
         )}
 
-        <ResizablePanel defaultSize={showHistory && showCanvas ? 45 : showHistory || showCanvas ? 60 : 100}>
+        <ResizablePanel defaultSize={showHistory && showCanvas ? 40 : showHistory || showCanvas ? 55 : 100}>
           <ChatPanel
             messages={activeSession?.messages || []}
             isLoading={isLoading}
             onSendMessage={handleSendMessage}
           />
         </ResizablePanel>
+
+        {showSources && (
+          <>
+            <ResizableHandle className="w-1 bg-border hover:bg-primary/50 transition-colors" />
+            <ResizablePanel defaultSize={15} minSize={12} maxSize={25}>
+              <SourcesPanel messages={activeSession?.messages || []} />
+            </ResizablePanel>
+          </>
+        )}
 
         {showCanvas && (
           <>
