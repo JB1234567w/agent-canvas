@@ -3,6 +3,7 @@ import { Send, Paperclip, Loader2, Bot, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import type { Message } from '@/types/research';
 
 interface ChatPanelProps {
@@ -88,7 +89,11 @@ export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps
                     message.role === 'user' ? 'message-user' : 'message-agent'
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {message.role === 'user' ? (
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  ) : (
+                    <MarkdownRenderer content={message.content} className="text-sm" />
+                  )}
                 </div>
                 <span className="text-xs text-muted-foreground px-1">
                   {formatTime(message.timestamp)}
