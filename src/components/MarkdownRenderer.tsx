@@ -8,6 +8,24 @@ import { Check, Copy } from 'lucide-react';
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  searchQuery?: string;
+}
+
+function highlightSearchInText(text: string, query: string): React.ReactNode {
+  if (!query.trim() || typeof text !== 'string') return text;
+
+  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+
+  return parts.map((part, i) =>
+    regex.test(part) ? (
+      <mark key={i} className="bg-primary/40 text-foreground rounded px-0.5">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
 }
 
 function CodeBlock({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) {
@@ -51,7 +69,20 @@ function CodeBlock({ children, ...props }: React.HTMLAttributes<HTMLPreElement>)
   );
 }
 
-export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content, className, searchQuery }: MarkdownRendererProps) {
+  const wrapWithHighlight = useCallback((children: React.ReactNode): React.ReactNode => {
+    if (!searchQuery) return children;
+    if (typeof children === 'string') {
+      return highlightSearchInText(children, searchQuery);
+    }
+    if (Array.isArray(children)) {
+      return children.map((child, i) => (
+        <span key={i}>{wrapWithHighlight(child)}</span>
+      ));
+    }
+    return children;
+  }, [searchQuery]);
+
   return (
     <div className={cn('prose prose-invert prose-sm max-w-none', className)}>
       <ReactMarkdown
@@ -68,7 +99,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
                   className="bg-muted px-1.5 py-0.5 rounded text-primary text-[0.9em]"
                   {...props}
                 >
-                  {children}
+                  {wrapWithHighlight(children)}
                 </code>
               );
             }
@@ -79,16 +110,16 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
             );
           },
           h1: ({ children }) => (
-            <h1 className="text-xl font-bold text-foreground mt-6 mb-3">{children}</h1>
+            <h1 className="text-xl font-bold text-foreground mt-6 mb-3">{wrapWithHighlight(children)}</h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-lg font-semibold text-foreground mt-5 mb-2">{children}</h2>
+            <h2 className="text-lg font-semibold text-foreground mt-5 mb-2">{wrapWithHighlight(children)}</h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-base font-semibold text-foreground mt-4 mb-2">{children}</h3>
+            <h3 className="text-base font-semibold text-foreground mt-4 mb-2">{wrapWithHighlight(children)}</h3>
           ),
           p: ({ children }) => (
-            <p className="text-foreground/90 leading-relaxed my-2">{children}</p>
+            <p className="text-foreground/90 leading-relaxed my-2">{wrapWithHighlight(children)}</p>
           ),
           ul: ({ children }) => (
             <ul className="list-disc list-inside space-y-1 my-2 text-foreground/90">{children}</ul>
@@ -97,7 +128,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
             <ol className="list-decimal list-inside space-y-1 my-2 text-foreground/90">{children}</ol>
           ),
           li: ({ children }) => (
-            <li className="text-foreground/90">{children}</li>
+            <li className="text-foreground/90">{wrapWithHighlight(children)}</li>
           ),
           a: ({ href, children }) => (
             <a

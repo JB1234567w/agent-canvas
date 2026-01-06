@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Code, FileText, Copy, Download, X, Maximize2, Minimize2, FileDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { SearchBar, highlightText } from '@/components/SearchBar';
 import { toast } from 'sonner';
 import type { CanvasContent } from '@/types/research';
 
@@ -22,6 +23,36 @@ export function Canvas({ contents, onRemoveContent }: CanvasProps) {
   const [activeTab, setActiveTab] = useState<string>(contents[0]?.id || '');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
+  // Find matches across all canvas content
+  const matches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return contents.filter((c) => 
+      c.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.title.toLowerCase().includes(searchQuery.toLowerCase())
+    ).map((c) => c.id);
+  }, [contents, searchQuery]);
+
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    setCurrentMatchIndex(0);
+  }, []);
+
+  const handleNextMatch = useCallback(() => {
+    if (matches.length === 0) return;
+    const nextIndex = (currentMatchIndex + 1) % matches.length;
+    setCurrentMatchIndex(nextIndex);
+    setActiveTab(matches[nextIndex]);
+  }, [matches, currentMatchIndex]);
+
+  const handlePrevMatch = useCallback(() => {
+    if (matches.length === 0) return;
+    const prevIndex = (currentMatchIndex - 1 + matches.length) % matches.length;
+    setCurrentMatchIndex(prevIndex);
+    setActiveTab(matches[prevIndex]);
+  }, [matches, currentMatchIndex]);
 
   const copyToClipboard = useCallback((content: string) => {
     navigator.clipboard.writeText(content).then(() => {
@@ -138,17 +169,27 @@ export function Canvas({ contents, onRemoveContent }: CanvasProps) {
     )}>
       <div className="panel-header">
         <span className="panel-title">Canvas</span>
-        <Button
-          variant="icon"
-          size="icon"
-          onClick={() => setIsFullscreen(!isFullscreen)}
-        >
-          {isFullscreen ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
-            <Maximize2 className="h-4 w-4" />
-          )}
-        </Button>
+        <div className="flex items-center gap-1">
+          <SearchBar
+            onSearch={handleSearch}
+            matchCount={matches.length}
+            currentMatch={matches.length > 0 ? currentMatchIndex + 1 : 0}
+            onNextMatch={handleNextMatch}
+            onPrevMatch={handlePrevMatch}
+            placeholder="Search canvas..."
+          />
+          <Button
+            variant="icon"
+            size="icon"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {contents.length === 0 ? (
@@ -167,14 +208,20 @@ export function Canvas({ contents, onRemoveContent }: CanvasProps) {
             <TabsList className="h-10 bg-transparent justify-start rounded-none px-2">
               {contents.map((content) => {
                 const Icon = getIcon(content.type);
+                const isMatch = matches.includes(content.id);
                 return (
                   <TabsTrigger
                     key={content.id}
                     value={content.id}
-                    className="group data-[state=active]:bg-secondary rounded-md gap-2 px-3"
+                    className={cn(
+                      'group data-[state=active]:bg-secondary rounded-md gap-2 px-3',
+                      isMatch && searchQuery && 'ring-1 ring-primary/50'
+                    )}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    <span className="max-w-[120px] truncate">{content.title}</span>
+                    <span className="max-w-[120px] truncate">
+                      {searchQuery ? highlightText(content.title, searchQuery) : content.title}
+                    </span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -241,7 +288,8 @@ export function Canvas({ contents, onRemoveContent }: CanvasProps) {
               </div>
               <div className="flex-1 overflow-auto scrollbar-thin p-4">
                 <MarkdownRenderer 
-                  content={content.type === 'code' ? `\`\`\`${content.language || ''}\n${content.content}\n\`\`\`` : content.content} 
+                  content={content.type === 'code' ? `\`\`\`${content.language || ''}\n${content.content}\n\`\`\`` : content.content}
+                  searchQuery={searchQuery}
                 />
               </div>
             </TabsContent>
