@@ -1,11 +1,54 @@
+import { useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
 import { cn } from '@/lib/utils';
+import { Check, Copy } from 'lucide-react';
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+}
+
+function CodeBlock({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    const codeElement = (children as React.ReactElement)?.props?.children;
+    const text = typeof codeElement === 'string' ? codeElement : String(codeElement || '');
+    
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [children]);
+
+  return (
+    <div className="group relative my-3">
+      <pre
+        className="bg-muted/50 rounded-lg p-4 overflow-x-auto pr-12"
+        {...props}
+      >
+        {children}
+      </pre>
+      <button
+        onClick={handleCopy}
+        className={cn(
+          'absolute top-2 right-2 p-1.5 rounded-md transition-all',
+          'opacity-0 group-hover:opacity-100',
+          'bg-secondary hover:bg-secondary/80 text-secondary-foreground',
+          copied && 'opacity-100 bg-primary text-primary-foreground'
+        )}
+        title={copied ? 'Copied!' : 'Copy code'}
+      >
+        {copied ? (
+          <Check className="h-4 w-4" />
+        ) : (
+          <Copy className="h-4 w-4" />
+        )}
+      </button>
+    </div>
+  );
 }
 
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
@@ -15,12 +58,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
         rehypePlugins={[rehypeHighlight]}
         components={{
           pre: ({ children, ...props }) => (
-            <pre
-              className="bg-muted/50 rounded-lg p-4 overflow-x-auto my-3"
-              {...props}
-            >
-              {children}
-            </pre>
+            <CodeBlock {...props}>{children}</CodeBlock>
           ),
           code: ({ className: codeClassName, children, ...props }) => {
             const isInline = !codeClassName;
