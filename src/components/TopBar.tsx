@@ -1,4 +1,4 @@
-import { Zap, PanelLeftClose, PanelRightClose } from 'lucide-react';
+import { Zap, PanelLeftClose, PanelRightClose, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LLMSelector } from './LLMSelector';
 import { SettingsDialog } from './SettingsDialog';
@@ -11,8 +11,10 @@ interface TopBarProps {
   onSettingsChange: (settings: Settings) => void;
   showHistory: boolean;
   showCanvas: boolean;
+  showSources: boolean;
   onToggleHistory: () => void;
   onToggleCanvas: () => void;
+  onToggleSources: () => void;
 }
 
 export function TopBar({
@@ -22,8 +24,10 @@ export function TopBar({
   onSettingsChange,
   showHistory,
   showCanvas,
+  showSources,
   onToggleHistory,
   onToggleCanvas,
+  onToggleSources,
 }: TopBarProps) {
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card/50 px-4">
@@ -48,6 +52,14 @@ export function TopBar({
           title="Toggle history panel"
         >
           <PanelLeftClose className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={showSources ? 'secondary' : 'icon'}
+          size="icon"
+          onClick={onToggleSources}
+          title="Toggle sources panel"
+        >
+          <BookOpen className="h-4 w-4" />
         </Button>
         <Button
           variant={showCanvas ? 'secondary' : 'icon'}
