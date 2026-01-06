@@ -1,19 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Loader2, Bot, User } from 'lucide-react';
+import { Send, Paperclip, Loader2, Bot, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
-import type { Message } from '@/types/research';
+import { FileUpload, AttachmentPreview } from '@/components/FileUpload';
+import type { Message, FileAttachment } from '@/types/research';
 
 interface ChatPanelProps {
   messages: Message[];
   isLoading: boolean;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, attachments?: FileAttachment[]) => void;
 }
 
 export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps) {
   const [input, setInput] = useState('');
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
+  const [showUpload, setShowUpload] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -22,9 +25,11 @@ export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps
   }, [messages]);
 
   const handleSubmit = () => {
-    if (!input.trim() || isLoading) return;
-    onSendMessage(input.trim());
+    if ((!input.trim() && attachments.length === 0) || isLoading) return;
+    onSendMessage(input.trim(), attachments.length > 0 ? attachments : undefined);
     setInput('');
+    setAttachments([]);
+    setShowUpload(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -94,6 +99,7 @@ export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps
                   ) : (
                     <MarkdownRenderer content={message.content} className="text-sm" />
                   )}
+                  {message.attachments && <AttachmentPreview attachments={message.attachments} />}
                 </div>
                 <span className="text-xs text-muted-foreground px-1">
                   {formatTime(message.timestamp)}
@@ -131,9 +137,50 @@ export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t border-border p-4">
+      <div className="border-t border-border p-4 space-y-3">
+        {/* File Upload Area */}
+        {showUpload && (
+          <div className="relative">
+            <button
+              onClick={() => setShowUpload(false)}
+              className="absolute -top-2 -right-2 z-10 p-1 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <FileUpload
+              attachments={attachments}
+              onAttachmentsChange={setAttachments}
+            />
+          </div>
+        )}
+
+        {/* Inline attachment previews when upload panel is closed */}
+        {!showUpload && attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="flex items-center gap-2 rounded-md bg-secondary/50 px-2 py-1 text-xs"
+              >
+                <span className="truncate max-w-[100px]">{attachment.name}</span>
+                <button
+                  onClick={() => setAttachments(attachments.filter(a => a.id !== attachment.id))}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex gap-2">
-          <Button variant="icon" size="icon" className="shrink-0">
+          <Button
+            variant="icon"
+            size="icon"
+            className={cn('shrink-0', showUpload && 'bg-primary/20')}
+            onClick={() => setShowUpload(!showUpload)}
+          >
             <Paperclip className="h-4 w-4" />
           </Button>
           <Textarea
@@ -147,7 +194,7 @@ export function ChatPanel({ messages, isLoading, onSendMessage }: ChatPanelProps
           />
           <Button
             onClick={handleSubmit}
-            disabled={!input.trim() || isLoading}
+            disabled={(!input.trim() && attachments.length === 0) || isLoading}
             className="shrink-0"
           >
             <Send className="h-4 w-4" />
