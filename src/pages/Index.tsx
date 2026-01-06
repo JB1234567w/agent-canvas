@@ -14,6 +14,7 @@ import {
   type CanvasContent,
   type Settings,
   type LLMModel,
+  type FileAttachment,
   DEFAULT_SETTINGS,
   LLM_MODELS,
 } from '@/types/research';
@@ -140,7 +141,7 @@ export default function Index() {
     }
   }, [activeSessionId, sessions]);
 
-  const handleSendMessage = useCallback(async (content: string) => {
+  const handleSendMessage = useCallback(async (content: string, attachments?: FileAttachment[]) => {
     if (!activeSessionId) {
       handleNewSession();
       return;
@@ -151,6 +152,7 @@ export default function Index() {
       role: 'user',
       content,
       timestamp: new Date(),
+      attachments,
     };
 
     setSessions((prev) =>
@@ -170,10 +172,14 @@ export default function Index() {
 
     // Simulate agent response
     setTimeout(() => {
+      const attachmentInfo = attachments && attachments.length > 0
+        ? `\n\nI've received ${attachments.length} file(s): ${attachments.map(a => a.name).join(', ')}. I'll analyze these documents as part of my research.`
+        : '';
+
       const agentMessage: Message = {
         id: generateId(),
         role: 'agent',
-        content: `I've analyzed your query about "${content.slice(0, 50)}..."\n\nBased on my research across multiple sources, here are the key findings:\n\n1. **Primary Insight**: This topic has significant implications in the current landscape.\n\n2. **Supporting Evidence**: Multiple peer-reviewed sources corroborate these findings.\n\n3. **Practical Applications**: There are several real-world use cases worth exploring.\n\nWould you like me to dive deeper into any specific aspect?`,
+        content: `I've analyzed your query about "${content.slice(0, 50)}..."${attachmentInfo}\n\nBased on my research across multiple sources, here are the key findings:\n\n1. **Primary Insight**: This topic has significant implications in the current landscape.\n\n2. **Supporting Evidence**: Multiple peer-reviewed sources corroborate these findings.\n\n3. **Practical Applications**: There are several real-world use cases worth exploring.\n\nWould you like me to dive deeper into any specific aspect?`,
         timestamp: new Date(),
         sources: [
           { title: 'Wikipedia', url: 'https://wikipedia.org' },

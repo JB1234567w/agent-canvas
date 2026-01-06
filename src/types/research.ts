@@ -1,9 +1,19 @@
+export interface FileAttachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+  file?: File;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'agent';
   content: string;
   timestamp: Date;
   sources?: Source[];
+  attachments?: FileAttachment[];
 }
 
 export interface Source {
